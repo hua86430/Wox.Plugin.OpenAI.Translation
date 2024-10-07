@@ -111,10 +111,25 @@ namespace Wox.Plugin.OpenAI.Translation
                 var content = new StringContent(JsonConvert.SerializeObject(requestBody), Encoding.UTF8,
                     "application/json");
 
-                var response = await client.PostAsync(apiUrl, content);
-                var responseString = await response.Content.ReadAsStringAsync();
-                var responseObject = JsonConvert.DeserializeObject<OpenAIResponse>(responseString);
-                return responseObject.choices[0].message.content.Trim();
+                try
+                {
+                    var response = await client.PostAsync(apiUrl, content);
+                    var responseString = await response.Content.ReadAsStringAsync();
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        // 解析錯誤訊息
+                        var errorResponse = JsonConvert.DeserializeObject<OpenAiErrorResponse>(responseString);
+                        return $"Error: {errorResponse.Error.Message}";
+                    }
+
+                    var responseObject = JsonConvert.DeserializeObject<OpenAiResponse>(responseString);
+                    return responseObject.Choices[0].Message.Content.Trim();
+                }
+                catch (HttpRequestException ex)
+                {
+                    return $"Request failed: {ex.Message}";
+                }
             }
         }
 
@@ -128,19 +143,32 @@ namespace Wox.Plugin.OpenAI.Translation
         }
 
 
+        public class OpenAiErrorResponse
+        {
+            public OpenAiError Error { get; set; }
+        }
+
+        public class OpenAiError
+        {
+            public string Message { get; set; }
+            public string Type { get; set; }
+            public string Param { get; set; }
+            public string Code { get; set; }
+        }
+
         public class Choice
         {
-            public Message message { get; set; }
+            public Message Message { get; set; }
         }
 
         public class Message
         {
-            public string content { get; set; }
+            public string Content { get; set; }
         }
 
-        public class OpenAIResponse
+        public class OpenAiResponse
         {
-            public List<Choice> choices { get; set; }
+            public List<Choice> Choices { get; set; }
         }
     }
 }
