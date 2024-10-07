@@ -15,6 +15,10 @@ namespace Wox.Plugin.OpenAI.Translation
         private static readonly string TokenFilePath =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "openai_token.txt");
 
+        private static readonly string ResponseLogFilePath =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "openai_response_log.txt");
+
         public void Init(PluginInitContext context)
         {
         }
@@ -61,7 +65,7 @@ namespace Wox.Plugin.OpenAI.Translation
                     results.Add(new Result
                     {
                         Title = translatedText,
-                        SubTitle = "Translated text",
+                        SubTitle = "Press Enter to copy to clipboard.",
                         IcoPath = "Images\\icon.png",
                         Action = context =>
                         {
@@ -96,14 +100,15 @@ namespace Wox.Plugin.OpenAI.Translation
 
         private async Task<string> TranslateText(string text, string targetLanguage, string token)
         {
+            if (text == null) return string.Empty;
+
             var apiUrl = "https://api.openai.com/v1/chat/completions";
             var prompt = targetLanguage == "en"
-                ? $"Translate the following text to English:\n\n{text}"
-                : $"Translate the following text to Traditional Chinese:\n\n{text}";
-
+                ? $"Translate the following text to English, and do not mention anything about training data or knowledge cutoff date:\n\n{text}"
+                : $"Translate the following text to Traditional Chinese, and do not mention anything about training data or knowledge cutoff date:\n\n{text}";
             var requestBody = new
             {
-                model = "gpt-3.5-turbo",
+                model = "gpt-4o-mini",
                 messages = new[]
                 {
                     new { role = "system", content = prompt }
@@ -122,6 +127,7 @@ namespace Wox.Plugin.OpenAI.Translation
                 {
                     var response = await client.PostAsync(apiUrl, content);
                     var responseString = await response.Content.ReadAsStringAsync();
+                    File.AppendAllText(ResponseLogFilePath, responseString);
 
                     if (!response.IsSuccessStatusCode)
                     {
