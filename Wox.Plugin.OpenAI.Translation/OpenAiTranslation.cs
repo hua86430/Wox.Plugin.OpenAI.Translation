@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Newtonsoft.Json;
 
 namespace Wox.Plugin.OpenAI.Translation
@@ -49,19 +50,25 @@ namespace Wox.Plugin.OpenAI.Translation
                 var token = File.ReadAllText(TokenFilePath);
                 var inputText = query.Search.TrimStart("tr ".ToCharArray());
 
-                // 檢查翻譯文本是否非空
                 if (!string.IsNullOrEmpty(inputText))
                 {
-                    // 修改語言檢測邏輯，將 "zh" 保留為中文，其他語言統一翻譯為中文
+                    // 偵測語言，根據結果決定翻譯目標語言
                     var sourceLanguage = DetectLanguage(inputText);
                     var targetLanguage = sourceLanguage == "zh" ? "en" : "zh"; // 中文翻譯成英文，其他語言翻譯成中文
                     var translatedText = TranslateText(inputText, targetLanguage, token).Result;
 
+                    // 返回翻譯結果，並在按下 Enter 時複製到剪貼板
                     results.Add(new Result
                     {
                         Title = translatedText,
                         SubTitle = "Translated text",
-                        IcoPath = "Images\\icon.png"
+                        IcoPath = "Images\\icon.png",
+                        Action = context =>
+                        {
+                            // 將翻譯結果複製到剪貼板
+                            Clipboard.SetText(translatedText);
+                            return true;
+                        }
                     });
                 }
                 else
@@ -78,7 +85,7 @@ namespace Wox.Plugin.OpenAI.Translation
             {
                 results.Add(new Result
                 {
-                    Title = "Please enter ［tr auth {token}］ to save your OpenAI token",
+                    Title = "Please enter ［ tr auth {token} ］ to save your OpenAI token",
                     SubTitle = "OpenAI token is required for translation.",
                     IcoPath = "Images\\icon.png"
                 });
