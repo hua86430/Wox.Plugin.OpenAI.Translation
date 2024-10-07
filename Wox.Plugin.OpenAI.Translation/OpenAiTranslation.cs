@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using Wox.Plugin.OpenAI.Translation.Models;
 
 namespace Wox.Plugin.OpenAI.Translation
 {
@@ -20,7 +21,7 @@ namespace Wox.Plugin.OpenAI.Translation
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "openai_response_log.txt");
 
-        private static CancellationTokenSource debounceCts = new CancellationTokenSource();
+        private static CancellationTokenSource _debounceCts = new CancellationTokenSource();
 
         public void Init(PluginInitContext context)
         {
@@ -34,8 +35,8 @@ namespace Wox.Plugin.OpenAI.Translation
         public async Task<List<Result>> QueryAsync(Query query)
         {
             var results = new List<Result>();
-            debounceCts.Cancel();
-            debounceCts = new CancellationTokenSource();
+            _debounceCts.Cancel();
+            _debounceCts = new CancellationTokenSource();
 
             var parameters = query.Search.Split(' ');
 
@@ -64,7 +65,7 @@ namespace Wox.Plugin.OpenAI.Translation
                 var token = File.ReadAllText(TokenFilePath);
                 try
                 {
-                    await Task.Delay(1000, debounceCts.Token);
+                    await Task.Delay(1000, _debounceCts.Token);
 
                     var sourceLanguage = DetectLanguage(inputText);
                     var targetLanguage = sourceLanguage == "zh" ? "en" : "zh";
@@ -157,34 +158,6 @@ namespace Wox.Plugin.OpenAI.Translation
             var otherCount = text.Length - chineseCount;
 
             return chineseCount > otherCount ? "zh" : "other";
-        }
-
-        public class OpenAiErrorResponse
-        {
-            public OpenAiError Error { get; set; }
-        }
-
-        public class OpenAiError
-        {
-            public string Message { get; set; }
-            public string Type { get; set; }
-            public string Param { get; set; }
-            public string Code { get; set; }
-        }
-
-        public class Choice
-        {
-            public Message Message { get; set; }
-        }
-
-        public class Message
-        {
-            public string Content { get; set; }
-        }
-
-        public class OpenAiResponse
-        {
-            public List<Choice> Choices { get; set; }
         }
     }
 }

@@ -83,6 +83,11 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Models\Choice.cs" />
+        <Compile Include="Models\Message.cs" />
+        <Compile Include="Models\OpenAiError.cs" />
+        <Compile Include="Models\OpenAiErrorResponse.cs" />
+        <Compile Include="Models\OpenAiResponse.cs" />
         <Compile Include="OpenAiTranslation.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
