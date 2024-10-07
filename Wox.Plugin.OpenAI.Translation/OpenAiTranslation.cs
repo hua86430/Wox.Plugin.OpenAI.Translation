@@ -26,26 +26,23 @@ namespace Wox.Plugin.OpenAI.Translation
         {
         }
 
-        // 同步的 Query 方法，使用 Task.Result 獲取異步結果
         public List<Result> Query(Query query)
         {
-            return QueryAsync(query).Result; // 同步調用異步邏輯
+            return QueryAsync(query).Result;
         }
 
         public async Task<List<Result>> QueryAsync(Query query)
         {
             var results = new List<Result>();
-            debounceCts.Cancel(); // 取消之前的請求
+            debounceCts.Cancel();
             debounceCts = new CancellationTokenSource();
 
             var parameters = query.Search.Split(' ');
 
-            // 檢查是否是 auth token 的操作
             if (parameters.Length > 1 && parameters[0].Equals("auth", StringComparison.OrdinalIgnoreCase))
             {
                 var token = parameters[1];
 
-                // 返回提示，並用 Lambda 表達式來執行 Token 儲存操作
                 results.Add(new Result
                 {
                     Title = "Press Enter to save OpenAI token.",
@@ -53,7 +50,6 @@ namespace Wox.Plugin.OpenAI.Translation
                     IcoPath = "Images\\icon.png",
                     Action = context =>
                     {
-                        // 儲存 Token 到本地檔案
                         File.WriteAllText(TokenFilePath, token);
                         return true;
                     }
@@ -61,7 +57,6 @@ namespace Wox.Plugin.OpenAI.Translation
                 return results;
             }
 
-            // 檢查是否有已經保存的 token
             var inputText = query.Search.TrimStart("tr ".ToCharArray());
 
             if (!string.IsNullOrEmpty(inputText) && File.Exists(TokenFilePath))
@@ -69,14 +64,12 @@ namespace Wox.Plugin.OpenAI.Translation
                 var token = File.ReadAllText(TokenFilePath);
                 try
                 {
-                    // 等待 1 秒，允許新的翻譯請求
                     await Task.Delay(1000, debounceCts.Token);
 
                     var sourceLanguage = DetectLanguage(inputText);
                     var targetLanguage = sourceLanguage == "zh" ? "en" : "zh";
                     var translatedText = await TranslateText(inputText, targetLanguage, token);
 
-                    // 返回翻譯結果，並在按下 Enter 時複製到剪貼板
                     results.Add(new Result
                     {
                         Title = translatedText,
@@ -144,7 +137,6 @@ namespace Wox.Plugin.OpenAI.Translation
 
                     if (!response.IsSuccessStatusCode)
                     {
-                        // 解析錯誤訊息
                         var errorResponse = JsonConvert.DeserializeObject<OpenAiErrorResponse>(responseString);
                         return $"Error: {errorResponse.Error.Message}";
                     }
@@ -161,10 +153,9 @@ namespace Wox.Plugin.OpenAI.Translation
 
         private string DetectLanguage(string text)
         {
-            var chineseCount = text.Count(c => c >= 0x4e00 && c <= 0x9fff); // 中文字符數
+            var chineseCount = text.Count(c => c >= 0x4e00 && c <= 0x9fff);
             var otherCount = text.Length - chineseCount;
 
-            // 如果主要是中文字符，則判定為中文，否則為其他語言
             return chineseCount > otherCount ? "zh" : "other";
         }
 
