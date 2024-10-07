@@ -1,0 +1,12 @@
+﻿{
+  "ID": "Wox.Plugin.OpenAITranslation",
+  "ActionKeyword": "tr",
+  "Name": "OpenAI Translator",
+  "Description": "Translate text using OpenAI API",
+  "Author": "Your Name",
+  "Version": "1.0",
+  "Language": "csharp",
+  "Website": "https://github.com/your-repo",
+  "IcoPath": "Images\\icon.png",
+  "ExecuteFileName": "Wox.Plugin.OpenAI.Translation.dll"
+}
