@@ -78,7 +78,7 @@ namespace Wox.Plugin.OpenAI.Translation
             {
                 results.Add(new Result
                 {
-                    Title = "Please enter tr auth {token} to save your OpenAI token",
+                    Title = "Please enter ［tr auth {token}］ to save your OpenAI token",
                     SubTitle = "OpenAI token is required for translation.",
                     IcoPath = "Images\\icon.png"
                 });
