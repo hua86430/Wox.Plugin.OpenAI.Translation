@@ -27,12 +27,20 @@ namespace Wox.Plugin.OpenAI.Translation
             if (parameters.Length > 1 && parameters[0].Equals("auth", StringComparison.OrdinalIgnoreCase))
             {
                 var token = parameters[1];
-                File.WriteAllText(TokenFilePath, token);
+
+                // 返回提示，並用 Lambda 表達式來執行 Token 儲存操作
                 results.Add(new Result
                 {
-                    Title = "Token saved successfully.",
-                    SubTitle = "OpenAI token has been saved.",
-                    IcoPath = "Images\\icon.png"
+                    Title = "Press Enter to save OpenAI token.",
+                    SubTitle = $"Token: {token}",
+                    IcoPath = "Images\\icon.png",
+                    Action = context =>
+                    {
+                        // 儲存 Token 到本地檔案
+                        File.WriteAllText(TokenFilePath, token);
+
+                        return true;
+                    }
                 });
             }
             // 檢查是否有已經保存的 token
