@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
@@ -19,13 +20,24 @@ namespace Wox.Plugin.OpenAI.Translation
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "openai_response_log.txt");
 
+        private static CancellationTokenSource debounceCts = new CancellationTokenSource();
+
         public void Init(PluginInitContext context)
         {
         }
 
+        // 同步的 Query 方法，使用 Task.Result 獲取異步結果
         public List<Result> Query(Query query)
         {
+            return QueryAsync(query).Result; // 同步調用異步邏輯
+        }
+
+        public async Task<List<Result>> QueryAsync(Query query)
+        {
             var results = new List<Result>();
+            debounceCts.Cancel(); // 取消之前的請求
+            debounceCts = new CancellationTokenSource();
+
             var parameters = query.Search.Split(' ');
 
             // 檢查是否是 auth token 的操作
@@ -43,23 +55,26 @@ namespace Wox.Plugin.OpenAI.Translation
                     {
                         // 儲存 Token 到本地檔案
                         File.WriteAllText(TokenFilePath, token);
-
                         return true;
                     }
                 });
+                return results;
             }
+
             // 檢查是否有已經保存的 token
-            else if (File.Exists(TokenFilePath))
+            var inputText = query.Search.TrimStart("tr ".ToCharArray());
+
+            if (!string.IsNullOrEmpty(inputText) && File.Exists(TokenFilePath))
             {
                 var token = File.ReadAllText(TokenFilePath);
-                var inputText = query.Search.TrimStart("tr ".ToCharArray());
-
-                if (!string.IsNullOrEmpty(inputText))
+                try
                 {
-                    // 偵測語言，根據結果決定翻譯目標語言
+                    // 等待 1 秒，允許新的翻譯請求
+                    await Task.Delay(1000, debounceCts.Token);
+
                     var sourceLanguage = DetectLanguage(inputText);
-                    var targetLanguage = sourceLanguage == "zh" ? "en" : "zh"; // 中文翻譯成英文，其他語言翻譯成中文
-                    var translatedText = TranslateText(inputText, targetLanguage, token).Result;
+                    var targetLanguage = sourceLanguage == "zh" ? "en" : "zh";
+                    var translatedText = await TranslateText(inputText, targetLanguage, token);
 
                     // 返回翻譯結果，並在按下 Enter 時複製到剪貼板
                     results.Add(new Result
@@ -69,28 +84,26 @@ namespace Wox.Plugin.OpenAI.Translation
                         IcoPath = "Images\\icon.png",
                         Action = context =>
                         {
-                            // 將翻譯結果複製到剪貼板
                             Clipboard.SetText(translatedText);
                             return true;
                         }
                     });
                 }
-                else
+                catch (TaskCanceledException)
                 {
                     results.Add(new Result
                     {
-                        Title = "Please enter text to translate.",
+                        Title = "Got Error: Please see 'openai_response_log.txt' for more details.",
+                        SubTitle = "Press Enter to copy to clipboard.",
                         IcoPath = "Images\\icon.png"
                     });
                 }
             }
-            // 如果沒有 token，提醒用戶進行 token 設定
             else
             {
                 results.Add(new Result
                 {
-                    Title = "Please enter ［ tr auth {token} ］ to save your OpenAI token",
-                    SubTitle = "OpenAI token is required for translation.",
+                    Title = "Please enter text to translate.",
                     IcoPath = "Images\\icon.png"
                 });
             }
@@ -154,7 +167,6 @@ namespace Wox.Plugin.OpenAI.Translation
             // 如果主要是中文字符，則判定為中文，否則為其他語言
             return chineseCount > otherCount ? "zh" : "other";
         }
-
 
         public class OpenAiErrorResponse
         {
